@@ -12,6 +12,8 @@ use DB;
 use Illuminate\Support\Facades\Validator;
 use Artisan;
 use App\Http\Resources\ProductResource;
+use App\Http\Resources\ShopResource;
+
 class ShopController extends Controller
 {	
 	public function __construct()
@@ -20,7 +22,7 @@ class ShopController extends Controller
 	}
 	public function index(Request $request){
 		try{
-			$this->content['data'] = Shop::all();
+			$this->content['data'] = ShopResource::collection(Shop::all());
 			$this->content['success'] =  true;
 			$status = 200;
 			return response()->json($this->content, $status);
@@ -55,7 +57,7 @@ class ShopController extends Controller
 					configureConnectionByName($db_name);
 					Artisan::call('migrate', ['--database' => $db_name, '--path' => 'database/migrations/product']);
 					$this->content['message'] =$shop_name ." shop created successfully !";	
-					$this->content['data']= $shop;			
+					$this->content['data']= new ShopResource($shop);			
 				}
 				else {
 					$this->content['message'] =$shop_name ." shop already exists !";
@@ -135,6 +137,58 @@ class ShopController extends Controller
 		}
 		
 		
+	}
+	public function updateProduct($id,$product_id,Request $request){
+		$db_name=Shop::updteRequest($id);
+		if(!$db_name){
+			$this->content['message'] = "Shop not found.";
+			$this->content['success'] =  false;
+			$status = 404;
+			return response()->json($this->content, $status);
+		}
+		configureConnectionByName($db_name);
+		$input=$request->only('category','product','discount','price');
+		$validator = Validator::make($input,[
+			'category'  =>  'string|max:200',
+			'product'   =>  'string|max:200',
+			'discount'  =>  'numeric|between:0,100',
+			'price'     =>  'numeric|regex:/^\d*(\.\d{1,2})?$/'
+		]);
+		if($validator->fails()) {
+			$errors = $validator->errors()->all();
+			$this->content['message'] = $errors;
+			$this->content['success'] =  false;
+			$status = 400;
+			return response()->json($this->content, $status);
+		}
+		else 
+		{
+			try{
+				$product = new Product();
+				$product->setConnection($db_name);
+				$product= $product->find($product_id);
+				if(!$product){
+					$this->content['message'] = "Product not found.";
+					$this->content['success'] =  false;
+					$status = 404;
+					return response()->json($this->content, $status);
+
+				}
+				if($request->has('price') && $request->has('discount'))
+				$input['price']= $input['price']-($input['price']*$input['discount']/100);
+				$newproduct=$product->update($input);
+				$this->content['message'] = "Product Updated Successfully.";
+				$this->content['success'] =  true;
+				$this->content['data']= new ProductResource($product);	
+				$status = 200;
+			}
+			catch(ModelNotFoundException $ex){
+				$this->content['message'] = "Product not found.";
+				$this->content['success'] =  false;
+				$status = 404;
+			}
+			return response()->json($this->content, $status);
+		}
 	}
 	
 	public function deleteProduct($id,$product_id,Request $request){

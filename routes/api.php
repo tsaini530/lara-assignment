@@ -21,7 +21,10 @@ Route::group(['namespace' => 'api','middleware' => ['api']] , function(){
 	Route::post('/shop', 'ShopController@createShop');	
 	Route::post('/shop/{id}/product', 'ShopController@createProduct');	
 	Route::get('/shop/{id}/products', 'ShopController@allProduct');	
+	Route::put('/shop/{id}/product/{product_id}','ShopController@updateProduct');
+	Route::patch('/shop/{id}/product/{product_id}','ShopController@updateProduct');	
 	Route::delete('/shop/{id}/product/{product_id}','ShopController@deleteProduct');
+
 
 
 });
